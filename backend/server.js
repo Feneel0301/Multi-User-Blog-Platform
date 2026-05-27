@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { connectDb } from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js"
 
 // load environment variable from the .env file
 dotenv.config();
@@ -15,6 +16,9 @@ connectDb();
 // essential middlewares
 app.use(express.json());
 app.use(cors());
+
+// mount the authentication routes
+app.use("/api/auth", authRoutes)
 
 // test route
 app.get("/", (req, res) => {
