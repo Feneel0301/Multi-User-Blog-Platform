@@ -2,7 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { connectDb } from "./config/db.js";
-import authRoutes from "./routes/authRoutes.js"
+import authRoutes from "./routes/authRoutes.js";
+import postRoutes from "./routes/postRoutes.js";
 
 // load environment variable from the .env file
 dotenv.config();
@@ -18,8 +19,8 @@ app.use(express.json());
 app.use(cors());
 
 // mount the authentication routes
-app.use("/api/auth", authRoutes)
-
+app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes)
 // test route
 app.get("/", (req, res) => {
   res.send("multi user blog api is running securly");
