@@ -75,3 +75,47 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Authenticate user via Google OAuth
+// @route   POST /api/auth/google
+// @access  Public
+export const googleAuth = async (req, res) => {
+  const { name, email } = req.body;
+
+  try {
+    // 1. Check if the user already exists in the database
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // 2. If they are a new user, create an account
+      // We generate a complex random password since they are authenticating via Google
+      const generatedPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+      
+      user = await User.create({
+        name,
+        email,
+        password: generatedPassword,
+        role: 'VISITOR' // Default role for new signups
+      });
+    }
+
+    // 3. Issue the secure JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // 4. Send back the user data and token
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token,
+    });
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    res.status(500).json({ message: "Server error during Google Authentication" });
+  }
+};
