@@ -1,15 +1,32 @@
 import express from 'express';
-import { createPost, getPosts, getPostBySlug } from '../controllers/postController.js';
+import { 
+  createPost, 
+  getPosts, 
+  getPostBySlug, 
+  updatePost, 
+  deletePost, 
+  getMyPosts,
+  getPostById
+} from '../controllers/postController.js';
 import { protect, creatorOnly } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// The GET route is public. The POST route is protected by TWO security checkpoints.
+// Public listing feed & creator post creation
 router.route('/')
   .get(getPosts)
-  .post(protect, creatorOnly, createPost); 
+  .post(protect, creatorOnly, createPost);
+
+// Creator dashboard inventory retrieval (MUST be defined before public slug route)
+router.get('/my-posts', protect, creatorOnly, getMyPosts);
+router.get('/by-id/:id', protect, creatorOnly, getPostById);
 
 // Dynamic SEO slug route
 router.get('/:slug', getPostBySlug);
+
+// Creator CRUD updates & deletions
+router.route('/:id')
+  .put(protect, creatorOnly, updatePost)
+  .delete(protect, creatorOnly, deletePost);
 
 export default router;
