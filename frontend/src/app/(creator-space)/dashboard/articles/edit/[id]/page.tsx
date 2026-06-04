@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldAlert, ArrowLeft, Save } from "lucide-react";
+import { ShieldAlert, ArrowLeft, Save, Upload, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface EditArticlePageProps {
@@ -47,6 +47,31 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   const [seoKeywords, setSeoKeywords] = useState("");
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+      const response = await axios.post(`${backendUrl}/upload`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setCoverImage(response.data.url);
+    } catch (error) {
+      console.error("Image upload failed:", error);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   // Fetch the article detail for editing
   const { data: post, isLoading, isError, error } = useQuery<PostDetails>({
@@ -190,16 +215,40 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
           </div>
         </div>
 
-        {/* Cover Image URL */}
+        {/* Cover Image Upload */}
         <div className="space-y-2">
-          <Label htmlFor="coverImage" className="text-slate-300 text-sm font-semibold">Featured Cover Image URL</Label>
-          <Input
-            id="coverImage"
-            value={coverImage}
-            onChange={(e) => setCoverImage(e.target.value)}
-            placeholder="https://images.unsplash.com/photo-..."
-            className="bg-white/5 border-white/20 text-white placeholder-slate-500"
+          <Label className="text-slate-300 text-sm font-semibold">Featured Cover Image</Label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            id="coverImageUpload"
+            disabled={isUploadingImage}
           />
+          {coverImage ? (
+            <div className="relative aspect-video w-full max-w-md rounded-xl overflow-hidden border border-white/20 bg-white/5">
+              <img src={coverImage} alt="Cover Preview" className="object-cover w-full h-full" />
+              <button
+                type="button"
+                onClick={() => setCoverImage("")}
+                className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => !isUploadingImage && document.getElementById("coverImageUpload")?.click()}
+              className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-xl p-8 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer w-full max-w-md"
+            >
+              <Upload className="h-8 w-8 text-slate-400 mb-2" />
+              <p className="text-sm font-semibold text-white">
+                {isUploadingImage ? "Uploading cover image..." : "Upload Cover Image"}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">PNG, JPG, or WEBP up to 5MB</p>
+            </div>
+          )}
         </div>
 
         {/* Short Excerpt */}
