@@ -16,10 +16,22 @@ export const createPost = async (req, res) => {
       status,
     } = req.body;
 
+    // Handle draft fallbacks
+    let finalTitle = title;
+    let finalSlug = slug;
+    if (status === "DRAFT") {
+      if (!finalTitle || finalTitle.trim() === "") {
+        finalTitle = "Untitled Draft";
+      }
+      if (!finalSlug || finalSlug.trim() === "") {
+        finalSlug = `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      }
+    }
+
     // Create the post and link it to the user who made the request (req.user is set by our protect middleware)
     const post = await Post.create({
-      title,
-      slug,
+      title: finalTitle,
+      slug: finalSlug,
       htmlContent,
       category,
       coverImage,
@@ -66,8 +78,8 @@ export const getPosts = async (req, res) => {
       ? { category: req.query.category }
       : {};
 
-    // 4. Combine queries (Only fetch PUBLISHED posts for the public feed)
-    const query = { ...searchQuery, ...categoryQuery, status: "PUBLISHED" };
+    // 4. Combine queries (Only fetch PUBLISHED posts for the public feed, and exclude soft-deleted posts)
+    const query = { ...searchQuery, ...categoryQuery, status: "PUBLISHED", isDeleted: { $ne: true } };
 
     // 5. Execute database query
     const posts = await Post.find(query)
@@ -95,7 +107,7 @@ export const getPosts = async (req, res) => {
 // @access  Public
 export const getPostBySlug = async (req, res) => {
   try {
-    const post = await Post.findOne({ slug: req.params.slug }).populate(
+    const post = await Post.findOne({ slug: req.params.slug, isDeleted: { $ne: true } }).populate(
       "authorId",
       "name",
     );
@@ -128,15 +140,29 @@ export const updatePost = async (req, res) => {
 
     const { title, slug, htmlContent, category, coverImage, excerpt, seoKeywords, status } = req.body;
 
+    // Handle draft fallbacks
+    let finalTitle = title !== undefined ? title : post.title;
+    let finalSlug = slug !== undefined ? slug : post.slug;
+    let finalStatus = status !== undefined ? status : post.status;
+
+    if (finalStatus === "DRAFT") {
+      if (!finalTitle || finalTitle.trim() === "") {
+        finalTitle = "Untitled Draft";
+      }
+      if (!finalSlug || finalSlug.trim() === "") {
+        finalSlug = `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      }
+    }
+
     // Update fields
-    post.title = title !== undefined ? title : post.title;
-    post.slug = slug !== undefined ? slug : post.slug;
+    post.title = finalTitle;
+    post.slug = finalSlug;
     post.htmlContent = htmlContent !== undefined ? htmlContent : post.htmlContent;
     post.category = category !== undefined ? category : post.category;
     post.coverImage = coverImage !== undefined ? coverImage : post.coverImage;
     post.excerpt = excerpt !== undefined ? excerpt : post.excerpt;
     post.seoKeywords = seoKeywords !== undefined ? seoKeywords : post.seoKeywords;
-    post.status = status !== undefined ? status : post.status;
+    post.status = finalStatus;
 
     const updatedPost = await post.save();
     res.json(updatedPost);
@@ -148,7 +174,7 @@ export const updatePost = async (req, res) => {
   }
 };
 
-// @desc    Delete a blog post
+// @desc    Delete a blog post (Soft delete to Trash)
 // @route   DELETE /api/posts/:id
 // @access  Private (CREATOR only)
 export const deletePost = async (req, res) => {
@@ -164,31 +190,40 @@ export const deletePost = async (req, res) => {
       return res.status(403).json({ message: "Access Denied: You do not own this article" });
     }
 
-    await Post.findByIdAndDelete(req.params.id);
-    res.json({ message: "Post removed successfully" });
+    // Soft delete: move to Trash
+    post.isDeleted = true;
+    post.deletedAt = new Date();
+    await post.save();
+
+    res.json({ message: "Article moved to Trash successfully." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get all posts by the logged-in creator (DRAFT and PUBLISHED)
+// @desc    Get all posts by the logged-in creator (DRAFT and PUBLISHED, supports trash parameter)
 // @route   GET /api/posts/my-posts
 // @access  Private (CREATOR only)
 export const getMyPosts = async (req, res) => {
   try {
-    const posts = await Post.find({ authorId: req.user._id }).sort({ createdAt: -1 });
+    const isTrash = req.query.trash === "true";
+    const query = {
+      authorId: req.user._id,
+      isDeleted: isTrash ? true : { $ne: true }
+    };
+    const posts = await Post.find(query).sort({ createdAt: -1 });
     res.json(posts);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get a single post by ID (for edit view)
+// @desc    Get a single post by ID (for edit view, excluding deleted ones)
 // @route   GET /api/posts/by-id/:id
 // @access  Private (CREATOR only)
 export const getPostById = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
@@ -202,3 +237,59 @@ export const getPostById = async (req, res) => {
   }
 };
 
+// @desc    Restore a soft-deleted post from Trash
+// @route   PUT /api/posts/:id/restore
+// @access  Private (CREATOR only)
+export const restorePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Verify ownership
+    if (post.authorId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Access Denied: You do not own this article" });
+    }
+
+    if (!post.isDeleted) {
+      return res.status(400).json({ message: "Post is not in Trash" });
+    }
+
+    post.isDeleted = false;
+    post.deletedAt = undefined;
+    await post.save();
+
+    res.json({ message: "Post restored successfully", post });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Delete a post permanently from database (must be in Trash)
+// @route   DELETE /api/posts/:id/permanent
+// @access  Private (CREATOR only)
+export const deletePostPermanent = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Verify ownership
+    if (post.authorId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Access Denied: You do not own this article" });
+    }
+
+    if (!post.isDeleted) {
+      return res.status(400).json({ message: "Post must be in Trash to be permanently deleted" });
+    }
+
+    await Post.findByIdAndDelete(req.params.id);
+    res.json({ message: "Post permanently deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

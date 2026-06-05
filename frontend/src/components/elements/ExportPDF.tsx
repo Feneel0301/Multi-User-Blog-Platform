@@ -8,6 +8,7 @@ import {
   View,
   StyleSheet,
   PDFDownloadLink,
+  Image,
 } from "@react-pdf/renderer";
 import { Download, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ interface ExportPDFProps {
     category: string;
     excerpt: string;
     htmlContent: string;
+    coverImage?: string;
     authorId: {
       name: string;
     };
@@ -116,6 +118,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#64748b",
   },
+  coverImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 6,
+    marginBottom: 20,
+  },
+  inlineImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 4,
+    marginVertical: 10,
+  },
   excerptContainer: {
     backgroundColor: "#f8fafc",
     borderLeftWidth: 3,
@@ -172,36 +186,50 @@ const styles = StyleSheet.create({
   },
 });
 
-// 2. Simple Helper to Parse HTML tags from Editor content into PDF structured blocks
+// 2. DOMParser Helper to Parse HTML tags from Editor content into PDF structured blocks (including images!)
 const parseHtmlToPdf = (html: string) => {
-  if (!html) return [];
-  const blocks: { tag: string; text: string }[] = [];
-  const regex = /<(p|h2|h3|li)[^>]*>(.*?)<\/\1>/gi;
-  let match;
-  let hasMatches = false;
+  if (typeof window === "undefined" || !html) return [];
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const blocks: { tag: string; text: string; src?: string }[] = [];
 
-  while ((match = regex.exec(html)) !== null) {
-    hasMatches = true;
-    const tag = match[1].toLowerCase();
-    const text = match[2]
-      .replace(/<[^>]+>/g, "") // Strip inline tags (e.g. strong, em, code)
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .trim();
+  // Traverse direct children of the body tag
+  const elements = doc.body.children;
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    const tag = el.tagName.toLowerCase();
 
-    if (text) {
-      blocks.push({ tag, text });
+    if (tag === "p" || tag === "h2" || tag === "h3") {
+      // Check if it contains an image inside the block
+      const img = el.querySelector("img");
+      if (img) {
+        const src = img.getAttribute("src");
+        if (src) {
+          blocks.push({ tag: "img", text: "", src });
+        }
+      } else {
+        const text = el.textContent || "";
+        if (text.trim()) {
+          blocks.push({ tag, text });
+        }
+      }
+    } else if (tag === "img") {
+      const src = el.getAttribute("src");
+      if (src) {
+        blocks.push({ tag: "img", text: "", src });
+      }
+    } else if (tag === "ul" || tag === "ol") {
+      const lis = el.querySelectorAll("li");
+      lis.forEach((li) => {
+        blocks.push({ tag: "li", text: li.textContent || "" });
+      });
     }
   }
 
-  // Fallback: strip tags and render as single paragraph if format is flat text
-  if (!hasMatches) {
-    const text = html
-      .replace(/<[^>]+>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .trim();
+  // Fallback: if no blocks were matched, clean and render as single paragraph
+  if (blocks.length === 0) {
+    const text = html.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
     if (text) {
       blocks.push({ tag: "p", text });
     }
@@ -241,6 +269,11 @@ const MyPDFDocument = ({ post }: ExportPDFProps) => {
           <Text style={styles.dateText}>Published: {formattedDate}</Text>
         </View>
 
+        {/* Featured Cover Image */}
+        {post.coverImage && (
+          <Image src={post.coverImage} style={styles.coverImage} />
+        )}
+
         {/* Brief Excerpt Callout */}
         <View style={styles.excerptContainer}>
           <Text style={styles.excerptText}>{post.excerpt}</Text>
@@ -269,6 +302,11 @@ const MyPDFDocument = ({ post }: ExportPDFProps) => {
                   <Text style={styles.bulletPoint}>•</Text>
                   <Text style={styles.listItemText}>{block.text}</Text>
                 </View>
+              );
+            }
+            if (block.tag === "img" && block.src) {
+              return (
+                <Image key={index} src={block.src} style={styles.inlineImage} />
               );
             }
             // Default paragraph rendering

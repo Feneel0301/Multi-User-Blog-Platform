@@ -6,7 +6,9 @@ import {
   updatePost, 
   deletePost, 
   getMyPosts,
-  getPostById
+  getPostById,
+  restorePost,
+  deletePostPermanent
 } from '../controllers/postController.js';
 import { protect, creatorOnly } from '../middlewares/authMiddleware.js';
 
@@ -20,6 +22,9 @@ router.route('/')
 // Creator dashboard inventory retrieval (MUST be defined before public slug route)
 router.get('/my-posts', protect, creatorOnly, getMyPosts);
 router.get('/by-id/:id', protect, creatorOnly, getPostById);
+
+router.put('/:id/restore', protect, creatorOnly, restorePost);
+router.delete('/:id/permanent', protect, creatorOnly, deletePostPermanent);
 
 // Dynamic SEO slug route
 router.get('/:slug', getPostBySlug);

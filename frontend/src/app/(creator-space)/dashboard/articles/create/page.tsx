@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEditorStore } from "@/lib/store";
-import { ArrowLeft, Save, Upload, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Upload, Trash2, Cloud, CloudCheck, CloudOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function CreateArticlePage() {
@@ -22,7 +22,11 @@ export default function CreateArticlePage() {
   
   const [isMounted, setIsMounted] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Sync status: idle | saving | synced | error
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "synced" | "error">("idle");
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,30 +65,188 @@ export default function CreateArticlePage() {
         .replace(/(^-|-$)+/g, "")
     : "";
 
+  // Ref to hold the latest draft state for unload/tab switch handlers
+  const latestDraftRef = useRef(draft);
+  useEffect(() => {
+    latestDraftRef.current = draft;
+  }, [draft]);
+
+  // Synchronize draft immediately to the database (used on tab switch / unload)
+  const syncImmediately = async () => {
+    const currentDraft = latestDraftRef.current;
+    
+    // Only sync if there is some meaningful content
+    if (!currentDraft.title && !currentDraft.htmlContent && !currentDraft.excerpt) {
+      return;
+    }
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+    const token = (session?.user as any)?.accessToken;
+    if (!token) return;
+
+    const payload = {
+      title: currentDraft.title || "Untitled Draft",
+      slug: currentDraft.title
+        ? currentDraft.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")
+        : `draft-${Date.now()}`,
+      category: currentDraft.category || "Architecture",
+      excerpt: currentDraft.excerpt || "",
+      htmlContent: currentDraft.htmlContent || "",
+      coverImage: currentDraft.coverImage || "",
+      seoKeywords: currentDraft.seoKeywords || "",
+      status: "DRAFT",
+    };
+
+    const url = currentDraft._id 
+      ? `${backendUrl}/posts/${currentDraft._id}` 
+      : `${backendUrl}/posts`;
+    const method = currentDraft._id ? "PUT" : "POST";
+
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+        keepalive: true, // Crucial for sending fetch during page unload/exit
+      });
+
+      if (response.ok && !currentDraft._id) {
+        const data = await response.json();
+        setDraftField("_id", data._id);
+      }
+    } catch (err) {
+      console.error("Immediate background sync failed:", err);
+    }
+  };
+
+  // Debounced auto-save function
+  const syncDraft = async (currentDraft: typeof draft) => {
+    // Only sync if there is some content
+    if (!currentDraft.title && !currentDraft.htmlContent && !currentDraft.excerpt) {
+      return;
+    }
+
+    setSyncStatus("saving");
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+      const payload = {
+        title: currentDraft.title || "Untitled Draft",
+        slug: currentDraft.title
+          ? currentDraft.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")
+          : `draft-${Date.now()}`,
+        category: currentDraft.category || "Architecture",
+        excerpt: currentDraft.excerpt || "",
+        htmlContent: currentDraft.htmlContent || "",
+        coverImage: currentDraft.coverImage || "",
+        seoKeywords: currentDraft.seoKeywords || "",
+        status: "DRAFT",
+      };
+
+      if (currentDraft._id) {
+        await axios.put(`${backendUrl}/posts/${currentDraft._id}`, payload, {
+          headers: {
+            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+          },
+        });
+      } else {
+        const response = await axios.post(`${backendUrl}/posts`, payload, {
+          headers: {
+            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+          },
+        });
+        setDraftField("_id", response.data._id);
+      }
+      setSyncStatus("synced");
+    } catch (error) {
+      console.error("Auto-save sync failed:", error);
+      setSyncStatus("error");
+    }
+  };
+
+  // Setup debouncing effect for typing changes
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    // Don't auto-save if all fields are completely blank
+    if (!draft.title && !draft.htmlContent && !draft.excerpt) {
+      setSyncStatus("idle");
+      return;
+    }
+
+    setSyncStatus("idle");
+    const timer = setTimeout(() => {
+      syncDraft(draft);
+    }, 2000); // 2 seconds debounce
+
+    return () => clearTimeout(timer);
+  }, [
+    draft.title,
+    draft.category,
+    draft.excerpt,
+    draft.htmlContent,
+    draft.coverImage,
+    draft.seoKeywords,
+    isMounted
+  ]);
+
+  // Handle Tab Switch and Browser Close hooks
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        syncImmediately();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      syncImmediately();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      // SPA navigate away sync (component unmount)
+      syncImmediately();
+    };
+  }, [session]);
+
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsPublishing(true);
 
     try {
-      // Send the formatted data to your Node.js backend using the secure token
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"}/posts`,
-        {
-          title: draft.title,
-          slug,
-          category: draft.category,
-          excerpt: draft.excerpt,
-          htmlContent: draft.htmlContent,
-          coverImage: draft.coverImage,
-          seoKeywords: draft.seoKeywords,
-          status: "PUBLISHED",
-        },
-        {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+      const payload = {
+        title: draft.title,
+        slug,
+        category: draft.category,
+        excerpt: draft.excerpt,
+        htmlContent: draft.htmlContent,
+        coverImage: draft.coverImage,
+        seoKeywords: draft.seoKeywords,
+        status: "PUBLISHED",
+      };
+
+      if (draft._id) {
+        // Update draft to published
+        await axios.put(`${backendUrl}/posts/${draft._id}`, payload, {
           headers: {
             Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
           },
-        }
-      );
+        });
+      } else {
+        // Create directly as published
+        await axios.post(`${backendUrl}/posts`, payload, {
+          headers: {
+            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+          },
+        });
+      }
       
       // Clear persistent Zustand cache on success
       clearDraft();
@@ -93,6 +255,45 @@ export default function CreateArticlePage() {
     } catch (error) {
       console.error("Failed to publish post:", error);
       setIsPublishing(false);
+    }
+  };
+
+  const handleSaveAsDraft = async () => {
+    setIsSavingDraft(true);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+      const payload = {
+        title: draft.title || "Untitled Draft",
+        slug: slug || `draft-${Date.now()}`,
+        category: draft.category || "Architecture",
+        excerpt: draft.excerpt || "",
+        htmlContent: draft.htmlContent || "",
+        coverImage: draft.coverImage || "",
+        seoKeywords: draft.seoKeywords || "",
+        status: "DRAFT",
+      };
+
+      if (draft._id) {
+        await axios.put(`${backendUrl}/posts/${draft._id}`, payload, {
+          headers: {
+            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+          },
+        });
+      } else {
+        await axios.post(`${backendUrl}/posts`, payload, {
+          headers: {
+            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+          },
+        });
+      }
+
+      clearDraft();
+      router.push("/dashboard/articles");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -109,19 +310,57 @@ export default function CreateArticlePage() {
     );
   }
 
+  // Generate Status Indicator JSX
+  const renderStatusIndicator = () => {
+    switch (syncStatus) {
+      case "saving":
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-indigo-300 font-semibold bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+            <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />
+            <span>Syncing draft...</span>
+          </div>
+        );
+      case "synced":
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-emerald-300 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+            <CloudCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Synced to cloud</span>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-red-300 font-semibold bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20">
+            <CloudOff className="h-3.5 w-3.5 text-red-400" />
+            <span>Sync failed</span>
+          </div>
+        );
+      case "idle":
+      default:
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-slate-300 font-semibold bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+            <Cloud className="h-3.5 w-3.5 text-slate-400" />
+            <span>Saved locally</span>
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 animate-fade-in pb-12">
       {/* Header and Back Link */}
-      <div className="border-b border-white/10 pb-6 space-y-3">
-        <Link
-          href="/dashboard/articles"
-          className="inline-flex items-center text-sm font-semibold text-slate-300 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Inventory
-        </Link>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Draft New Article</h1>
-        <p className="text-slate-300 font-medium">Configure your SEO parameters and write your content. Changes are saved locally on the fly.</p>
+      <div className="border-b border-white/10 pb-6 space-y-3 relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <Link
+            href="/dashboard/articles"
+            className="inline-flex items-center text-sm font-semibold text-slate-300 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Inventory
+          </Link>
+          {renderStatusIndicator()}
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2">Draft New Article</h1>
+        <p className="text-slate-300 font-medium">Configure your SEO parameters and write your content. Changes are saved locally and synced automatically.</p>
       </div>
 
       <form onSubmit={handlePublish} className="space-y-6">
@@ -227,11 +466,22 @@ export default function CreateArticlePage() {
         </div>
 
         {/* Submit Actions */}
-        <div className="flex justify-end pt-6 border-t border-white/10">
+        <div className="flex justify-end pt-6 border-t border-white/10 gap-4">
+          <Button 
+            type="button"
+            onClick={handleSaveAsDraft}
+            disabled={isSavingDraft || isPublishing}
+            variant="outline"
+            className="border-white/20 text-white hover:bg-white/10 font-bold px-6 py-6 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <Save className="h-5 w-5 text-slate-300" />
+            <span>{isSavingDraft ? "Saving Draft..." : "Save as Draft"}</span>
+          </Button>
+
           <Button 
             type="submit" 
             className="bg-white text-[#0A1F44] hover:bg-slate-200 font-bold px-8 py-6 shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all cursor-pointer flex items-center gap-1.5"
-            disabled={isPublishing || !draft.htmlContent}
+            disabled={isPublishing || isSavingDraft || !draft.htmlContent}
           >
             <Save className="h-5 w-5" />
             <span>{isPublishing ? "Publishing to Network..." : "Publish Article"}</span>

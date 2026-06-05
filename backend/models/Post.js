@@ -4,28 +4,29 @@ const postSchema = new mongoose.Schema(
   {
     title: { 
       type: String, 
-      required: true 
+      required: function() { return this.status === 'PUBLISHED'; }
     },
     slug: { 
       type: String, 
-      required: true, 
+      required: function() { return this.status === 'PUBLISHED'; }, 
       unique: true, 
+      sparse: true,
       index: true // Indexed for faster SEO routing
     },
     htmlContent: { 
       type: String, 
-      required: true 
+      required: function() { return this.status === 'PUBLISHED'; }
     },
     category: { 
       type: String, 
-      required: true 
+      required: function() { return this.status === 'PUBLISHED'; }
     },
     coverImage: { 
       type: String 
     },
     excerpt: { 
       type: String, 
-      required: true 
+      required: function() { return this.status === 'PUBLISHED'; }
     },
     seoKeywords: { 
       type: String 
@@ -39,6 +40,19 @@ const postSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'User', // Relational link mapping back to the User model
       required: true 
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+    deletedAt: {
+      type: Date
+    },
+    deleteVerificationCode: {
+      type: String
+    },
+    deleteVerificationExpires: {
+      type: Date
     }
   }, 
   { 

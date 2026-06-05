@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface DraftState {
+  _id?: string;
   title: string;
   category: string;
   excerpt: string;
@@ -28,6 +29,7 @@ export const useEditorStore = create<EditorStore>()(
   persist(
     (set) => ({
       draft: {
+        _id: "",
         title: "",
         category: "",
         excerpt: "",
@@ -42,6 +44,7 @@ export const useEditorStore = create<EditorStore>()(
       clearDraft: () =>
         set({
           draft: {
+            _id: "",
             title: "",
             category: "",
             excerpt: "",
