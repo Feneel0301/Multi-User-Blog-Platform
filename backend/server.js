@@ -7,6 +7,7 @@ import { connectDb } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +32,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/users", userRoutes);
 
 // test route
 app.get("/", (req, res) => {

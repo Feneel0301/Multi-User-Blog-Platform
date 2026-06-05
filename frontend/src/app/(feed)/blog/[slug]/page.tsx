@@ -4,6 +4,8 @@ import axios from "axios";
 import { ArrowLeft, Clock, Calendar, BookOpen, Eye } from "lucide-react";
 import ExportPDFButton from "@/components/elements/ExportPDF";
 import TrackView from "@/components/elements/TrackView";
+import ScrollProgress from "@/components/elements/ScrollProgress";
+import BookmarkButton from "@/components/elements/BookmarkButton";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -89,6 +91,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       {/* Invisible component to track unique page view */}
       <TrackView postId={post._id} />
 
+      {/* Client component to track scroll position and analytics */}
+      <ScrollProgress htmlContent={post.htmlContent} />
+
       <div className="mx-auto max-w-4xl space-y-8 relative z-10">
         
         {/* Navigation back and print button action line */}
@@ -100,8 +105,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Feed
           </Link>
-          {/* PDF Download Link */}
-          <ExportPDFButton post={post} />
+          <div className="flex items-center gap-3">
+            <BookmarkButton postId={post._id} />
+            <ExportPDFButton post={post} />
+          </div>
         </div>
 
         {/* Cover graphic */}

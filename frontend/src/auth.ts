@@ -49,10 +49,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true; // Allow standard email/password logins to proceed
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as any).role;
         token.accessToken = (user as any).token;
+      }
+      if (trigger === "update" && session) {
+        if (session.role) token.role = session.role;
+        if (session.token) token.accessToken = session.token;
       }
       return token;
     },

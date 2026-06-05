@@ -19,7 +19,13 @@ const userSchema = new mongoose.Schema(
       type: String, 
       enum: ['VISITOR', 'CREATOR'], 
       default: 'VISITOR' 
-    }
+    },
+    savedPosts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post'
+      }
+    ]
   }, 
   { 
     timestamps: true // Automatically creates 'createdAt' and 'updatedAt' fields

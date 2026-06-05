@@ -119,3 +119,37 @@ export const googleAuth = async (req, res) => {
     res.status(500).json({ message: "Server error during Google Authentication" });
   }
 };
+
+// @desc    Upgrade a visitor to a creator
+// @route   PUT /api/auth/upgrade
+// @access  Private
+export const upgradeToCreator = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find and update user role to CREATOR
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { role: "CREATOR" },
+      { new: true }
+    ).select("-passwordHash");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate a new token with the updated role
+    const token = generateToken(user._id, user.role);
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token,
+    });
+  } catch (error) {
+    console.error("Upgrade error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
