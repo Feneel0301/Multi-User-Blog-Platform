@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { Search, ChevronLeft, ChevronRight, BookOpen, Clock, Tag, User } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, BookOpen, Clock, Tag, User, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,7 @@ interface Post {
     name: string;
   };
   createdAt: string;
+  viewsCount?: number;
 }
 
 interface FetchPostsResponse {
@@ -157,13 +158,18 @@ export default function DiscoveryFeedPage() {
 
                     <CardContent className="p-6 flex flex-col justify-between flex-1 space-y-4">
                       <div className="space-y-2">
-                        {/* Meta: Creation Date & Read Time */}
                         <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
                           <span>{new Date(post.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            5 min read
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5 text-slate-500" />
+                              5 min read
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3.5 w-3.5 text-slate-500" />
+                              {post.viewsCount || 0}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Title */}

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import axios from "axios";
-import { ArrowLeft, Clock, Calendar, User, BookOpen } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, BookOpen, Eye } from "lucide-react";
 import ExportPDFButton from "@/components/elements/ExportPDF";
+import TrackView from "@/components/elements/TrackView";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -85,6 +86,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <article className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 relative">
+      {/* Invisible component to track unique page view */}
+      <TrackView postId={post._id} />
+
       <div className="mx-auto max-w-4xl space-y-8 relative z-10">
         
         {/* Navigation back and print button action line */}
@@ -135,6 +139,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-slate-400" />
               <span>5 min read</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Eye className="h-4 w-4 text-slate-400" />
+              <span>{post.viewsCount || 0} views</span>
             </div>
           </div>
         </div>

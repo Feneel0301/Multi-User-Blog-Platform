@@ -53,6 +53,10 @@ const postSchema = new mongoose.Schema(
     },
     deleteVerificationExpires: {
       type: Date
+    },
+    viewsCount: {
+      type: Number,
+      default: 0
     }
   }, 
   { 

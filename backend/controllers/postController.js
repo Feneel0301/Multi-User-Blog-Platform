@@ -1,4 +1,6 @@
 import Post from "../models/Post.js";
+import View from "../models/View.js";
+import jwt from "jsonwebtoken";
 
 // @desc    Create a new blog post
 // @route   POST /api/posts
@@ -289,6 +291,53 @@ export const deletePostPermanent = async (req, res) => {
 
     await Post.findByIdAndDelete(req.params.id);
     res.json({ message: "Post permanently deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Record a unique page view on an article
+// @route   POST /api/posts/:id/view
+// @access  Public (Optional auth)
+export const recordView = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Determine viewer identity
+    let viewerId = req.body.visitorId || req.ip;
+
+    // Check if optional auth headers are present
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+      try {
+        const token = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded && decoded.id) {
+          viewerId = decoded.id;
+        }
+      } catch (err) {
+        // Stale/invalid token, fallback to visitorId or IP
+      }
+    }
+
+    try {
+      // Attempt to record view (unique index prevents duplicates)
+      await View.create({ postId, viewerId });
+      
+      // Increment views count on the post
+      post.viewsCount = (post.viewsCount || 0) + 1;
+      await post.save();
+    } catch (dbError) {
+      // Catch duplicate key error (code 11000) and ignore it
+      if (dbError.code !== 11000) {
+        throw dbError;
+      }
+    }
+
+    res.json({ viewsCount: post.viewsCount });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

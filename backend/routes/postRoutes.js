@@ -8,7 +8,8 @@ import {
   getMyPosts,
   getPostById,
   restorePost,
-  deletePostPermanent
+  deletePostPermanent,
+  recordView
 } from '../controllers/postController.js';
 import { protect, creatorOnly } from '../middlewares/authMiddleware.js';
 
@@ -23,6 +24,7 @@ router.route('/')
 router.get('/my-posts', protect, creatorOnly, getMyPosts);
 router.get('/by-id/:id', protect, creatorOnly, getPostById);
 
+router.post('/:id/view', recordView);
 router.put('/:id/restore', protect, creatorOnly, restorePost);
 router.delete('/:id/permanent', protect, creatorOnly, deletePostPermanent);
 

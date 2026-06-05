@@ -7,7 +7,7 @@ import axios from "axios";
 import Link from "next/link";
 import { 
   FileText, Plus, Edit, Trash2, Tag, Calendar, ShieldAlert, 
-  RotateCcw, Loader2
+  RotateCcw, Loader2, Eye
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface Post {
   category: string;
   status: "DRAFT" | "PUBLISHED";
   createdAt: string;
+  viewsCount?: number;
 }
 
 export default function DashboardArticlesPage() {
@@ -256,6 +257,7 @@ export default function DashboardArticlesPage() {
                     <th className="py-4 px-6">
                       {activeTab === "trash" ? "Deleted Date" : "Created Date"}
                     </th>
+                    <th className="py-4 px-6 text-center">Views</th>
                     {activeTab !== "trash" && (
                       <th className="py-4 px-6 text-center">Live Status</th>
                     )}
@@ -291,6 +293,13 @@ export default function DashboardArticlesPage() {
                             day: "numeric",
                             year: "numeric",
                           })}
+                        </span>
+                      </td>
+                      {/* Views Count */}
+                      <td className="py-4 px-6 text-center font-semibold text-slate-300">
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="h-3.5 w-3.5 text-slate-400" />
+                          {post.viewsCount || 0}
                         </span>
                       </td>
                       {/* Live status toggle */}
