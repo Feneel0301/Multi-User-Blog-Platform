@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
-import { LogIn, Mail, Lock, ShieldAlert, Award, UserCheck } from "lucide-react";
+import { LogIn, Mail, Lock, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,50 +45,6 @@ function LoginForm() {
     }
   };
 
-  // Mock login: auto-registers on backend if missing, then logs in credentials-style
-  const triggerMockLogin = async (mockRole: "CREATOR" | "VISITOR") => {
-    setIsLoading(true);
-    setErrorMsg("");
-    const mockEmail = mockRole === "CREATOR" ? "creator@example.com" : "visitor@example.com";
-    const mockPassword = "password123";
-    const mockName = mockRole === "CREATOR" ? "Lead Architect" : "Guest Developer";
-
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-      
-      // Silently try to register the mock user in case it does not exist in the DB
-      try {
-        await axios.post(`${backendUrl}/auth/register`, {
-          name: mockName,
-          email: mockEmail,
-          password: mockPassword,
-          role: mockRole,
-        });
-      } catch (err) {
-        // Ignore duplicate user errors, proceed to login
-      }
-
-      // Perform credentials sign in
-      const res = await signIn("credentials", {
-        email: mockEmail,
-        password: mockPassword,
-        redirect: false,
-      });
-
-      if (res?.error) {
-        setErrorMsg("Failed to sign in mock user.");
-        setIsLoading(false);
-      } else {
-        // Successful redirect
-        const redirectTarget = mockRole === "CREATOR" ? "/dashboard/articles" : "/";
-        router.push(redirectTarget);
-        router.refresh();
-      }
-    } catch (err) {
-      setErrorMsg("Mock account database synchronisation failed.");
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
@@ -188,39 +144,6 @@ function LoginForm() {
           Sign In with Google
         </Button>
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/10" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-[#0A1F44] px-2.5 text-slate-400">Evaluator Mock Access</span>
-          </div>
-        </div>
-
-        {/* Instant Mock Logins */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            type="button"
-            onClick={() => triggerMockLogin("CREATOR")}
-            disabled={isLoading}
-            variant="outline"
-            className="bg-indigo-500/10 border-indigo-500/20 text-indigo-200 hover:bg-indigo-500/20 text-xs py-2 h-auto flex flex-col gap-1 cursor-pointer"
-          >
-            <Award className="h-4 w-4" />
-            <span>Mock Creator</span>
-          </Button>
-          <Button
-            type="button"
-            onClick={() => triggerMockLogin("VISITOR")}
-            disabled={isLoading}
-            variant="outline"
-            className="bg-emerald-500/10 border-emerald-500/20 text-emerald-200 hover:bg-emerald-500/20 text-xs py-2 h-auto flex flex-col gap-1 cursor-pointer"
-          >
-            <UserCheck className="h-4 w-4" />
-            <span>Mock Visitor</span>
-          </Button>
-        </div>
 
         {/* Register link */}
         <p className="text-center text-xs text-slate-400 pt-4">

@@ -1,14 +1,35 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
-import { Search, ChevronLeft, ChevronRight, BookOpen, Clock, Tag, User, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, BookOpen, Clock, Tag, User, Eye, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ListingSkeleton } from "@/components/ui/skeleton";
+
+function SecurityAlert() {
+  const searchParams = useSearchParams();
+  const errorCode = searchParams.get("error");
+  
+  if (errorCode !== "403") return null;
+  
+  return (
+    <div className="max-w-2xl mx-auto flex items-start gap-3.5 bg-red-950/40 border border-red-500/30 p-4 rounded-2xl text-red-200 text-sm shadow-xl animate-fade-in">
+      <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5 text-red-400" />
+      <div className="space-y-1 text-left">
+        <p className="font-bold text-white">403 - Access Denied</p>
+        <p className="text-slate-300 text-xs leading-relaxed">
+          You do not have creator privileges to access the publishing dashboard. You can request a role upgrade from the user menu in the top navigation bar.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 
 interface Post {
   _id: string;
@@ -78,6 +99,10 @@ export default function DiscoveryFeedPage() {
             High-fidelity technical design patterns, architecture briefs, and development logs.
           </p>
         </div>
+
+        <Suspense fallback={null}>
+          <SecurityAlert />
+        </Suspense>
 
         {/* Search & Category Filter Section */}
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-xl">

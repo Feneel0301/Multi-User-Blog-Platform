@@ -32,27 +32,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          // Silently send the Google data to your Node.js backend
-          const response = await axios.post(`${process.env.BACKEND_URL}/auth/google`, {
+          // Verify we can successfully reach and sync with the backend
+          await axios.post(`${process.env.BACKEND_URL}/auth/google`, {
             name: user.name,
             email: user.email,
           });
-
-          // Attach the backend database role and JWT token to the NextAuth user object
-          (user as any).role = response.data.role;
-          (user as any).token = response.data.token;
           return true;
         } catch (error) {
-          console.error("Error syncing Google user with backend:", error);
+          console.error("Error verifying Google user backend sync in signIn:", error);
           return false; // Deny login if backend sync fails
         }
       }
       return true; // Allow standard email/password logins to proceed
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
-        token.role = (user as any).role;
-        token.accessToken = (user as any).token;
+        if (account?.provider === "google") {
+          try {
+            // Silently fetch database role and token from backend on first sign-in
+            const response = await axios.post(`${process.env.BACKEND_URL}/auth/google`, {
+              name: user.name,
+              email: user.email,
+            });
+            token.role = response.data.role;
+            token.accessToken = response.data.token;
+          } catch (error) {
+            console.error("Error syncing Google user with backend in jwt callback:", error);
+          }
+        } else {
+          // Credentials login (user object already has role and token from backend login)
+          token.role = (user as any).role;
+          token.accessToken = (user as any).token;
+        }
       }
       if (trigger === "update" && session) {
         if (session.role) token.role = session.role;

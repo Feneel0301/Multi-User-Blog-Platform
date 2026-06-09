@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEditorStore } from "@/lib/store";
-import { ArrowLeft, Save, Upload, Trash2, Cloud, CloudCheck, CloudOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Upload, Trash2, Cloud, CloudCheck, CloudOff, Loader2, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 
 export default function CreateArticlePage() {
@@ -24,6 +24,7 @@ export default function CreateArticlePage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Sync status: idle | saving | synced | error
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "synced" | "error">("idle");
@@ -33,6 +34,7 @@ export default function CreateArticlePage() {
     if (!file) return;
 
     setIsUploadingImage(true);
+    setSubmitError(null);
     const formData = new FormData();
     formData.append("image", file);
 
@@ -40,13 +42,13 @@ export default function CreateArticlePage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
       const response = await axios.post(`${backendUrl}/upload`, formData, {
         headers: {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
         },
       });
       setDraftField("coverImage", response.data.url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Image upload failed:", error);
+      setSubmitError(error.response?.data?.message || "Image upload failed. Please try again.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -218,6 +220,7 @@ export default function CreateArticlePage() {
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsPublishing(true);
+    setSubmitError(null);
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
@@ -252,14 +255,16 @@ export default function CreateArticlePage() {
       clearDraft();
       router.push("/dashboard/articles");
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to publish post:", error);
+      setSubmitError(error.response?.data?.message || "Failed to publish article. Please verify slug and content.");
       setIsPublishing(false);
     }
   };
 
   const handleSaveAsDraft = async () => {
     setIsSavingDraft(true);
+    setSubmitError(null);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
       const payload = {
@@ -290,8 +295,9 @@ export default function CreateArticlePage() {
       clearDraft();
       router.push("/dashboard/articles");
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save draft:", error);
+      setSubmitError(error.response?.data?.message || "Failed to save draft.");
     } finally {
       setIsSavingDraft(false);
     }
@@ -464,6 +470,13 @@ export default function CreateArticlePage() {
             onChange={(content) => setDraftField("htmlContent", content)} 
           />
         </div>
+
+        {submitError && (
+          <div className="flex items-center gap-2.5 bg-red-950/40 border border-red-500/30 p-4 rounded-xl text-red-200 text-sm">
+            <ShieldAlert className="h-5 w-5 shrink-0 text-red-400" />
+            <span>{submitError}</span>
+          </div>
+        )}
 
         {/* Submit Actions */}
         <div className="flex justify-end pt-6 border-t border-white/10 gap-4">

@@ -30,6 +30,20 @@ export const createPost = async (req, res) => {
       }
     }
 
+    // Ensure the slug is unique
+    let isSlugTaken = true;
+    let baseSlug = finalSlug;
+    let loopCount = 0;
+    while (isSlugTaken && loopCount < 10) {
+      const existing = await Post.findOne({ slug: finalSlug });
+      if (!existing) {
+        isSlugTaken = false;
+      } else {
+        finalSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
+        loopCount++;
+      }
+    }
+
     // Create the post and link it to the user who made the request (req.user is set by our protect middleware)
     const post = await Post.create({
       title: finalTitle,
@@ -153,6 +167,20 @@ export const updatePost = async (req, res) => {
       }
       if (!finalSlug || finalSlug.trim() === "") {
         finalSlug = `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      }
+    }
+
+    // Ensure the slug is unique if it is being changed
+    let isSlugTaken = true;
+    let baseSlug = finalSlug;
+    let loopCount = 0;
+    while (isSlugTaken && loopCount < 10) {
+      const existing = await Post.findOne({ slug: finalSlug, _id: { $ne: post._id } });
+      if (!existing) {
+        isSlugTaken = false;
+      } else {
+        finalSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
+        loopCount++;
       }
     }
 

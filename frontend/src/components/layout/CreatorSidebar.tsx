@@ -28,8 +28,10 @@ export default function CreatorSidebar() {
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed top-16 bottom-0 left-0 z-30 border-r border-white/10 bg-[#0A1F44]/95 transition-all duration-300 flex flex-col justify-between",
-          sidebarOpen ? "w-64" : "w-16 md:w-20"
+          "fixed top-16 bottom-0 z-30 border-r border-white/10 bg-[#0A1F44]/95 transition-all duration-300 flex flex-col justify-between",
+          sidebarOpen 
+            ? "w-64 left-0" 
+            : "-left-64 md:left-0 w-0 md:w-20 overflow-hidden md:overflow-visible"
         )}
       >
         {/* Navigation Section */}
@@ -102,7 +104,7 @@ export default function CreatorSidebar() {
       </aside>
 
       {/* Mobile Drawer Overlay Trigger */}
-      {!sidebarOpen && (
+      {sidebarOpen && (
         <div
           onClick={toggleSidebar}
           className="fixed inset-0 z-20 bg-black/40 backdrop-blur-xs md:hidden"

@@ -48,12 +48,14 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingImage(true);
+    setSaveError(null);
     const formData = new FormData();
     formData.append("image", file);
 
@@ -61,13 +63,13 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
       const response = await axios.post(`${backendUrl}/upload`, formData, {
         headers: {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
         },
       });
       setCoverImage(response.data.url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Image upload failed:", error);
+      setSaveError(error.response?.data?.message || "Image upload failed. Please try again.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -116,14 +118,16 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       router.push("/dashboard/articles");
       router.refresh();
     },
-    onError: () => {
+    onError: (err: any) => {
       setIsSaving(false);
+      setSaveError(err.response?.data?.message || "Failed to update article");
     },
   });
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setSaveError(null);
 
     updateMutation.mutate({
       title,
@@ -282,6 +286,13 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
             <RichTextEditor content={htmlContent} onChange={setHtmlContent} />
           )}
         </div>
+
+        {saveError && (
+          <div className="flex items-center gap-2.5 bg-red-950/40 border border-red-500/30 p-4 rounded-xl text-red-200 text-sm mb-4">
+            <ShieldAlert className="h-5 w-5 shrink-0 text-red-400" />
+            <span>{saveError}</span>
+          </div>
+        )}
 
         {/* Status selection and Submit actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-6 border-t border-white/10 gap-4">
