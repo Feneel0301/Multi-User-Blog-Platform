@@ -46,7 +46,7 @@ export default function DashboardArticlesPage() {
   const [postToPermanentlyDelete, setPostToPermanentlyDelete] = useState<string | null>(null);
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-  const token = (session?.user as any)?.accessToken;
+  const token = (session?.user as { accessToken?: string })?.accessToken;
 
   // React Query: Fetch creator's specific posts based on active tab
   const { data: posts, isLoading, isError, error, refetch } = useQuery<Post[]>({
@@ -106,8 +106,9 @@ export default function DashboardArticlesPage() {
       setDeleteError("");
       refetch();
     },
-    onError: (err: any) => {
-      setDeleteError(err.response?.data?.message || "Failed to move article to Trash.");
+    onError: (err) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setDeleteError(errorMsg || "Failed to move article to Trash.");
     },
   });
 
@@ -225,7 +226,7 @@ export default function DashboardArticlesPage() {
             <div className="p-8 text-center text-red-400">
               <ShieldAlert className="mx-auto h-10 w-10 mb-2" />
               <p className="font-semibold">Failed to synchronise database records</p>
-              <p className="text-xs text-slate-400 mt-1">{(error as any)?.message}</p>
+              <p className="text-xs text-slate-400 mt-1">{(error as Error)?.message}</p>
             </div>
           ) : !posts || posts.length === 0 ? (
             <div className="p-12 text-center text-slate-400 max-w-sm mx-auto">

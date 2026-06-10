@@ -22,7 +22,7 @@ export default function RoleGuard({ children }: RoleGuardProps) {
     setUpgradeError("");
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-      const accessToken = (session?.user as any)?.accessToken;
+      const accessToken = (session?.user as { accessToken?: string })?.accessToken;
       
       const response = await axios.put(
         `${backendUrl}/auth/upgrade`,
@@ -41,9 +41,10 @@ export default function RoleGuard({ children }: RoleGuardProps) {
       
       // Refresh to reload dashboard layout
       router.refresh();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to upgrade role from guard:", err);
-      setUpgradeError(err.response?.data?.message || "Failed to upgrade profile. Please try again.");
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setUpgradeError(errorMsg || "Failed to upgrade profile. Please try again.");
     } finally {
       setIsUpgrading(false);
     }
@@ -59,7 +60,7 @@ export default function RoleGuard({ children }: RoleGuardProps) {
     );
   }
 
-  const userRole = (session?.user as any)?.role || "VISITOR";
+  const userRole = (session?.user as { role?: string })?.role || "VISITOR";
 
   // 2. Access Denied Block: If not logged in or role is not CREATOR
   if (!session || userRole !== "CREATOR") {

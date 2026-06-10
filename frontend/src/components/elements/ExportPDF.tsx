@@ -271,6 +271,7 @@ const MyPDFDocument = ({ post }: ExportPDFProps) => {
 
         {/* Featured Cover Image */}
         {post.coverImage && (
+          /* eslint-disable-next-line jsx-a11y/alt-text */
           <Image src={post.coverImage} style={styles.coverImage} />
         )}
 
@@ -306,6 +307,7 @@ const MyPDFDocument = ({ post }: ExportPDFProps) => {
             }
             if (block.tag === "img" && block.src) {
               return (
+                /* eslint-disable-next-line jsx-a11y/alt-text */
                 <Image key={index} src={block.src} style={styles.inlineImage} />
               );
             }
@@ -336,6 +338,7 @@ export default function ExportPDFButton({ post }: ExportPDFProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 

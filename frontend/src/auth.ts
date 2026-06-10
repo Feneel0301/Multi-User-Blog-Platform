@@ -21,7 +21,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const user = response.data;
           if (user) return user;
           return null;
-        } catch (error) {
+        } catch {
           return null;
         }
       },
@@ -61,8 +61,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         } else {
           // Credentials login (user object already has role and token from backend login)
-          token.role = (user as any).role;
-          token.accessToken = (user as any).token;
+          token.role = (user as { role?: string }).role;
+          token.accessToken = (user as { token?: string }).token;
         }
       }
       if (trigger === "update" && session) {
@@ -73,8 +73,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token) {
-        (session.user as any).role = token.role;
-        (session.user as any).accessToken = token.accessToken;
+        (session.user as { role?: string; accessToken?: string }).role = token.role as string;
+        (session.user as { role?: string; accessToken?: string }).accessToken = token.accessToken as string;
       }
       return session;
     },

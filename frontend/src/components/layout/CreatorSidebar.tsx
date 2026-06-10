@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUIStore } from "@/lib/store";
-import { BookOpen, FileText, PlusCircle, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, PlusCircle, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function CreatorSidebar() {

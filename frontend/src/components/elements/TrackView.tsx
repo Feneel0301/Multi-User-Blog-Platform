@@ -22,7 +22,7 @@ export default function TrackView({ postId }: TrackViewProps) {
         }
 
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-        const token = (session?.user as any)?.accessToken;
+        const token = (session?.user as { accessToken?: string })?.accessToken;
         
         const config = {
           headers: {

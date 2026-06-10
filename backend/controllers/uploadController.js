@@ -9,10 +9,29 @@ const __dirname = path.dirname(__filename);
 
 // Initialize Multer with memory storage
 const storage = multer.memoryStorage();
-export const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limit size to 5MB
-}).single("image");
+
+// Wrap the Multer configuration to intercept file format and size errors gracefully
+export const upload = (req, res, next) => {
+  const multerUpload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // Limit size to 5MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg"];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Only JPEG, PNG, WEBP, and GIF images are allowed."));
+      }
+    }
+  }).single("image");
+
+  multerUpload(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message });
+    }
+    next();
+  });
+};
 
 // @desc    Upload an image file (Cloudinary stream or local fallback)
 // @route   POST /api/upload

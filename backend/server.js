@@ -23,7 +23,13 @@ connectDb();
 
 // essential middlewares
 app.use(express.json());
-app.use(cors());
+
+// Configure CORS securely (restrict origin in production if FRONTEND_URL is set)
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "*",
+  credentials: process.env.FRONTEND_URL ? true : false,
+};
+app.use(cors(corsOptions));
 
 // Serve local file uploads statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

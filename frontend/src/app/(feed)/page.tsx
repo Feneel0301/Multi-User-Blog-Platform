@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
@@ -60,13 +60,17 @@ export default function DiscoveryFeedPage() {
   const [page, setPage] = useState(1);
 
   // Debounce search input to avoid hitting backend on every keystroke
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
+  useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearch(e.target.value);
+      setDebouncedSearch(search);
       setPage(1); // Reset page on new search
     }, 400);
+
     return () => clearTimeout(handler);
+  }, [search]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
   };
 
   const categories = ["All", "Architecture", "Frontend", "Backend", "DevOps"];
@@ -146,7 +150,7 @@ export default function DiscoveryFeedPage() {
         ) : isError ? (
           <div className="text-center py-12 border border-white/10 bg-white/5 rounded-2xl p-8">
             <h2 className="text-xl font-bold text-red-400">Failed to sync feed</h2>
-            <p className="text-slate-400 mt-2">Error: {(error as any)?.message || "Internal network error"}</p>
+            <p className="text-slate-400 mt-2">Error: {(error as Error)?.message || "Internal network error"}</p>
           </div>
         ) : !data?.posts || data.posts.length === 0 ? (
           <div className="text-center py-20 border border-white/10 bg-white/5 rounded-2xl p-8 max-w-md mx-auto">

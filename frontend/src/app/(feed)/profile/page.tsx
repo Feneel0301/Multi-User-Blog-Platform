@@ -7,10 +7,10 @@ import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  User, Mail, Calendar, Shield, Bookmark, FileText, 
-  Trash2, ArrowRight, Tag, Eye, Clock, Loader2, Award
+  Mail, Calendar, Shield, Bookmark, FileText, 
+  Trash2, ArrowRight, Eye, Clock, Award
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -35,8 +35,8 @@ export default function ProfilePage() {
   const router = useRouter();
   
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-  const token = (session?.user as any)?.accessToken;
-  const isCreator = (session?.user as any)?.role === "CREATOR";
+  const token = (session?.user as { accessToken?: string })?.accessToken;
+  const isCreator = (session?.user as { role?: string })?.role === "CREATOR";
 
   // Tab state: saved (default for visitors) | created (default for creators)
   const [activeTab, setActiveTab] = useState<"created" | "saved">("saved");
@@ -51,6 +51,7 @@ export default function ProfilePage() {
   // Set default tab based on role once loaded
   useEffect(() => {
     if (isCreator) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("created");
     } else {
       setActiveTab("saved");
@@ -122,7 +123,7 @@ export default function ProfilePage() {
           <Shield className="mx-auto h-12 w-12 text-red-400" />
           <h1 className="text-2xl font-bold text-white">Profile Synchronisation Error</h1>
           <p className="text-slate-300">
-            {(error as any)?.message || "Failed to load user profile. Please try logging in again."}
+            {(error as Error)?.message || "Failed to load user profile. Please try logging in again."}
           </p>
           <Link href="/">
             <Button className="bg-white text-[#0A1F44] hover:bg-slate-200 font-bold px-6 py-2.5 rounded-lg text-sm transition-all cursor-pointer">

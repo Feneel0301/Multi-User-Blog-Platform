@@ -18,6 +18,7 @@ export default function BookmarkButton({ postId }: BookmarkButtonProps) {
 
   useEffect(() => {
     if (!session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsFetchingState(false);
       return;
     }
@@ -25,7 +26,7 @@ export default function BookmarkButton({ postId }: BookmarkButtonProps) {
     const checkBookmarkStatus = async () => {
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-        const accessToken = (session?.user as any)?.accessToken;
+        const accessToken = (session?.user as { accessToken?: string })?.accessToken;
         const res = await axios.get(`${backendUrl}/users/profile`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -33,7 +34,9 @@ export default function BookmarkButton({ postId }: BookmarkButtonProps) {
         });
         
         const savedPosts = res.data.user?.savedPosts || [];
-        const isSaved = savedPosts.some((p: any) => (p._id === postId || p === postId));
+        const isSaved = savedPosts.some((p: { _id?: string } | string) => 
+          typeof p === "object" ? p._id === postId : p === postId
+        );
         setIsBookmarked(isSaved);
       } catch (err) {
         console.error("Error checking bookmark status:", err);
@@ -54,7 +57,7 @@ export default function BookmarkButton({ postId }: BookmarkButtonProps) {
     setIsLoading(true);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-      const accessToken = (session?.user as any)?.accessToken;
+      const accessToken = (session?.user as { accessToken?: string })?.accessToken;
 
       const res = await axios.post(
         `${backendUrl}/users/bookmark/${postId}`,

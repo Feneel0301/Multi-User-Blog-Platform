@@ -18,7 +18,7 @@ async function fetchPost(slug: string) {
     const response = await axios.get(`${backendUrl}/posts/${slug}`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching article server-side:", (error as any).message);
+    console.error("Error fetching article server-side:", (error as Error).message);
     return null;
   }
 }

@@ -36,7 +36,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   const { data: session } = useSession();
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-  const token = (session?.user as any)?.accessToken;
+  const token = (session?.user as { accessToken?: string })?.accessToken;
 
   // Local Form States
   const [title, setTitle] = useState("");
@@ -67,9 +67,10 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
         },
       });
       setCoverImage(response.data.url);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Image upload failed:", error);
-      setSaveError(error.response?.data?.message || "Image upload failed. Please try again.");
+      const errorMsg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setSaveError(errorMsg || "Image upload failed. Please try again.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -90,6 +91,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   });
 
   // Pre-fill state when data is resolved from the database
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (post) {
       setTitle(post.title);
@@ -101,6 +103,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       setStatus(post.status);
     }
   }, [post]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Automatically compute SEO URL slug
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
@@ -118,9 +121,10 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       router.push("/dashboard/articles");
       router.refresh();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       setIsSaving(false);
-      setSaveError(err.response?.data?.message || "Failed to update article");
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setSaveError(errorMsg || "Failed to update article");
     },
   });
 
@@ -161,7 +165,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       <div className="mx-auto max-w-md text-center py-20 border border-white/10 bg-white/5 rounded-2xl p-8 mt-10">
         <ShieldAlert className="mx-auto h-12 w-12 text-red-400 mb-4" />
         <h2 className="text-xl font-bold text-white">Failed to retrieve article details</h2>
-        <p className="text-slate-400 mt-2">{(error as any)?.message || "You may not be authorized to edit this article."}</p>
+        <p className="text-slate-400 mt-2">{(error as Error)?.message || "You may not be authorized to edit this article."}</p>
         <Link href="/dashboard/articles" className="inline-block mt-6">
           <Button className="bg-white text-[#0A1F44] hover:bg-slate-200 font-bold px-4 py-2 cursor-pointer">
             Return to Inventory

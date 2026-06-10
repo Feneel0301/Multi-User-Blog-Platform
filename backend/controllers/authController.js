@@ -94,7 +94,7 @@ export const googleAuth = async (req, res) => {
       user = await User.create({
         name,
         email,
-        password: generatedPassword,
+        passwordHash: generatedPassword,
         role: 'VISITOR' // Default role for new signups
       });
     }

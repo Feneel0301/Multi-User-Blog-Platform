@@ -53,8 +53,9 @@ export default function RegisterPage() {
         router.push(redirectTarget);
         router.refresh();
       }
-    } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || "Registration failed. Email may already be registered.");
+    } catch (err) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setErrorMsg(errorMsg || "Registration failed. Email may already be registered.");
       setIsLoading(false);
     }
   };

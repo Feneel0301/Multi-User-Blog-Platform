@@ -42,13 +42,14 @@ export default function CreateArticlePage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
       const response = await axios.post(`${backendUrl}/upload`, formData, {
         headers: {
-          Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+          Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
         },
       });
       setDraftField("coverImage", response.data.url);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Image upload failed:", error);
-      setSubmitError(error.response?.data?.message || "Image upload failed. Please try again.");
+      const errorMsg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setSubmitError(errorMsg || "Image upload failed. Please try again.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -56,6 +57,7 @@ export default function CreateArticlePage() {
 
   // Prevent Next.js hydration issues with localStorage persist
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
@@ -83,7 +85,7 @@ export default function CreateArticlePage() {
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-    const token = (session?.user as any)?.accessToken;
+    const token = (session?.user as { accessToken?: string })?.accessToken;
     if (!token) return;
 
     const payload = {
@@ -150,13 +152,13 @@ export default function CreateArticlePage() {
       if (currentDraft._id) {
         await axios.put(`${backendUrl}/posts/${currentDraft._id}`, payload, {
           headers: {
-            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+            Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
           },
         });
       } else {
         const response = await axios.post(`${backendUrl}/posts`, payload, {
           headers: {
-            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+            Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
           },
         });
         setDraftField("_id", response.data._id);
@@ -169,6 +171,7 @@ export default function CreateArticlePage() {
   };
 
   // Setup debouncing effect for typing changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isMounted) return;
     
@@ -184,6 +187,7 @@ export default function CreateArticlePage() {
     }, 2000); // 2 seconds debounce
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     draft.title,
     draft.category,
@@ -193,6 +197,7 @@ export default function CreateArticlePage() {
     draft.seoKeywords,
     isMounted
   ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle Tab Switch and Browser Close hooks
   useEffect(() => {
@@ -215,6 +220,7 @@ export default function CreateArticlePage() {
       // SPA navigate away sync (component unmount)
       syncImmediately();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const handlePublish = async (e: React.FormEvent) => {
@@ -239,14 +245,14 @@ export default function CreateArticlePage() {
         // Update draft to published
         await axios.put(`${backendUrl}/posts/${draft._id}`, payload, {
           headers: {
-            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+            Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
           },
         });
       } else {
         // Create directly as published
         await axios.post(`${backendUrl}/posts`, payload, {
           headers: {
-            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+            Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
           },
         });
       }
@@ -255,9 +261,10 @@ export default function CreateArticlePage() {
       clearDraft();
       router.push("/dashboard/articles");
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to publish post:", error);
-      setSubmitError(error.response?.data?.message || "Failed to publish article. Please verify slug and content.");
+      const errorMsg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setSubmitError(errorMsg || "Failed to publish article. Please verify slug and content.");
       setIsPublishing(false);
     }
   };
@@ -281,13 +288,13 @@ export default function CreateArticlePage() {
       if (draft._id) {
         await axios.put(`${backendUrl}/posts/${draft._id}`, payload, {
           headers: {
-            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+            Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
           },
         });
       } else {
         await axios.post(`${backendUrl}/posts`, payload, {
           headers: {
-            Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+            Authorization: `Bearer ${(session?.user as { accessToken?: string })?.accessToken}`,
           },
         });
       }
@@ -295,9 +302,10 @@ export default function CreateArticlePage() {
       clearDraft();
       router.push("/dashboard/articles");
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to save draft:", error);
-      setSubmitError(error.response?.data?.message || "Failed to save draft.");
+      const errorMsg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setSubmitError(errorMsg || "Failed to save draft.");
     } finally {
       setIsSavingDraft(false);
     }

@@ -37,7 +37,7 @@ export default function Navbar() {
     setUpgradeError("");
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
-      const accessToken = (session?.user as any)?.accessToken;
+      const accessToken = (session?.user as { accessToken?: string })?.accessToken;
       
       const response = await axios.put(
         `${backendUrl}/auth/upgrade`,
@@ -59,9 +59,10 @@ export default function Navbar() {
       // Redirect to creator studio dashboard
       router.push("/dashboard/articles");
       router.refresh();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to upgrade role:", err);
-      setUpgradeError(err.response?.data?.message || "Something went wrong. Please try again.");
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setUpgradeError(errorMsg || "Something went wrong. Please try again.");
     } finally {
       setIsUpgrading(false);
     }
@@ -88,7 +89,7 @@ export default function Navbar() {
             <Link href="/" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
               Discovery Feed
             </Link>
-            {session && (session.user as any)?.role === "CREATOR" && (
+            {session && (session.user as { role?: string })?.role === "CREATOR" && (
               <Link href="/dashboard/articles" className="text-sm font-medium text-slate-300 hover:text-white transition-colors flex items-center gap-1.5">
                 <LayoutDashboard className="h-4 w-4" />
                 Creator Studio
@@ -110,7 +111,7 @@ export default function Navbar() {
                   <DropdownMenuItem className="py-2.5 focus:bg-white/10 focus:text-white">
                     <div className="flex flex-col">
                       <span className="font-semibold text-sm">{session.user?.name}</span>
-                      <span className="text-xs text-slate-400">{(session.user as any)?.role || "Visitor"}</span>
+                      <span className="text-xs text-slate-400">{(session.user as { role?: string })?.role || "Visitor"}</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
@@ -122,7 +123,7 @@ export default function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
                   {/* Dashboard link if creator */}
-                  {(session.user as any)?.role === "CREATOR" && (
+                  {(session.user as { role?: string })?.role === "CREATOR" && (
                     <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white cursor-pointer">
                       <Link href="/dashboard/articles" className="flex w-full items-center gap-2 py-2">
                         <LayoutDashboard className="h-4 w-4" />
@@ -131,7 +132,7 @@ export default function Navbar() {
                     </DropdownMenuItem>
                   )}
                   {/* Upgrade link if visitor */}
-                  {(session.user as any)?.role === "VISITOR" && (
+                  {(session.user as { role?: string })?.role === "VISITOR" && (
                     <DropdownMenuItem 
                       onSelect={() => setIsUpgradeDialogOpen(true)}
                       className="focus:bg-white/10 focus:text-indigo-300 text-indigo-400 font-semibold cursor-pointer"
@@ -181,7 +182,7 @@ export default function Navbar() {
             >
               Discovery Feed
             </Link>
-            {session && (session.user as any)?.role === "CREATOR" && (
+            {session && (session.user as { role?: string })?.role === "CREATOR" && (
               <Link
                 href="/dashboard/articles"
                 onClick={() => setMobileMenuOpen(false)}
@@ -195,7 +196,7 @@ export default function Navbar() {
                 <div className="space-y-2">
                   <div className="px-3 py-2">
                     <p className="text-sm font-semibold text-white">{session.user?.name}</p>
-                    <p className="text-xs text-slate-400">{(session.user as any)?.role || "Visitor"}</p>
+                    <p className="text-xs text-slate-400">{(session.user as { role?: string })?.role || "Visitor"}</p>
                   </div>
                   {/* Profile link in mobile menu */}
                   <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="block mb-2">
@@ -205,7 +206,7 @@ export default function Navbar() {
                     </Button>
                   </Link>
                   {/* Upgrade link in mobile menu */}
-                  {(session.user as any)?.role === "VISITOR" && (
+                  {(session.user as { role?: string })?.role === "VISITOR" && (
                     <Button
                       onClick={() => {
                         setMobileMenuOpen(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { ArrowUp, Clock, BookOpen, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,26 +10,23 @@ interface ScrollProgressProps {
 
 export default function ScrollProgress({ htmlContent }: ScrollProgressProps) {
   const [scrollPercent, setScrollPercent] = useState(0);
-  const [wordCount, setWordCount] = useState(0);
-  const [readingTime, setReadingTime] = useState(1);
   const [timeLeft, setTimeLeft] = useState(1);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [showCompletionToast, setShowCompletionToast] = useState(false);
   const toastShownRef = useRef(false);
 
-  // Compute word count and initial reading time
-  useEffect(() => {
-    // Strip HTML tags using simple regex
+  // Compute initial reading speed based on average: 200 words per minute
+  const readingTime = useMemo(() => {
     const cleanText = htmlContent.replace(/<\/?[^>]+(>|$)/g, " ");
     const words = cleanText.trim().split(/\s+/).filter(Boolean);
-    const count = words.length;
-    setWordCount(count);
-    
-    // Average reading speed: 200 words per minute
-    const time = Math.max(1, Math.ceil(count / 200));
-    setReadingTime(time);
-    setTimeLeft(time);
+    return Math.max(1, Math.ceil(words.length / 200));
   }, [htmlContent]);
+
+  // Synchronize timeLeft state whenever readingTime changes (e.g. new article loaded)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTimeLeft(readingTime);
+  }, [readingTime]);
 
   // Track scroll position
   useEffect(() => {

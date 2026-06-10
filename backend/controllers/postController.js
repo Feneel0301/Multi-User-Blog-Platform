@@ -1,6 +1,10 @@
 import Post from "../models/Post.js";
 import View from "../models/View.js";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+
+// List of reserved route segments that cannot be used as URL slugs
+const RESERVED_SLUGS = ["my-posts", "by-id"];
 
 // @desc    Create a new blog post
 // @route   POST /api/posts
@@ -30,13 +34,13 @@ export const createPost = async (req, res) => {
       }
     }
 
-    // Ensure the slug is unique
+    // Ensure the slug is unique and doesn't collide with reserved backend endpoints
     let isSlugTaken = true;
     let baseSlug = finalSlug;
     let loopCount = 0;
     while (isSlugTaken && loopCount < 10) {
       const existing = await Post.findOne({ slug: finalSlug });
-      if (!existing) {
+      if (!existing && !RESERVED_SLUGS.includes(finalSlug)) {
         isSlugTaken = false;
       } else {
         finalSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
@@ -79,12 +83,12 @@ export const getPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10; // Default to 10 posts per page
     const skip = (page - 1) * limit;
 
-    // 2. Search Logic (Looks in both the title and custom SEO keywords)
+    // 2. Search Logic (Looks in both the title and custom SEO keywords with safe regex escaping)
     const searchQuery = req.query.search
       ? {
           $or: [
-            { title: { $regex: req.query.search, $options: "i" } },
-            { seoKeywords: { $regex: req.query.search, $options: "i" } },
+            { title: { $regex: req.query.search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), $options: "i" } },
+            { seoKeywords: { $regex: req.query.search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), $options: "i" } },
           ],
         }
       : {};
@@ -170,13 +174,13 @@ export const updatePost = async (req, res) => {
       }
     }
 
-    // Ensure the slug is unique if it is being changed
+    // Ensure the slug is unique and doesn't collide with reserved backend endpoints if it is being changed
     let isSlugTaken = true;
     let baseSlug = finalSlug;
     let loopCount = 0;
     while (isSlugTaken && loopCount < 10) {
       const existing = await Post.findOne({ slug: finalSlug, _id: { $ne: post._id } });
-      if (!existing) {
+      if (!existing && !RESERVED_SLUGS.includes(finalSlug)) {
         isSlugTaken = false;
       } else {
         finalSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
@@ -316,6 +320,12 @@ export const deletePostPermanent = async (req, res) => {
     if (!post.isDeleted) {
       return res.status(400).json({ message: "Post must be in Trash to be permanently deleted" });
     }
+
+    // Clean up data integrity: Pull this post's ID from all users' bookmark collections
+    await User.updateMany(
+      { savedPosts: req.params.id },
+      { $pull: { savedPosts: req.params.id } }
+    );
 
     await Post.findByIdAndDelete(req.params.id);
     res.json({ message: "Post permanently deleted successfully" });

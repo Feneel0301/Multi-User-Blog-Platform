@@ -48,12 +48,6 @@ const postSchema = new mongoose.Schema(
     deletedAt: {
       type: Date
     },
-    deleteVerificationCode: {
-      type: String
-    },
-    deleteVerificationExpires: {
-      type: Date
-    },
     viewsCount: {
       type: Number,
       default: 0
