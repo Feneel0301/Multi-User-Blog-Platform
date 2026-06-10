@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import axios from "axios";
 import { Mail, ArrowLeft, Send, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +11,24 @@ import { Label } from "@/components/ui/label";
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (!email) return;
+
+    setIsLoading(true);
+    setErrorMsg("");
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+      await axios.post(`${backendUrl}/auth/forgot-password`, { email });
       setSubmitted(true);
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setErrorMsg(error.response?.data?.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -51,6 +65,12 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMsg && (
+              <div className="bg-red-950/40 border border-red-500/30 p-3 rounded-lg text-red-200 text-xs text-center">
+                {errorMsg}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-300">Email Address</Label>
               <div className="relative">
@@ -69,10 +89,11 @@ export default function ForgotPasswordPage() {
 
             <Button
               type="submit"
-              className="w-full bg-white text-[#0A1F44] hover:bg-slate-200 font-bold py-2 shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isLoading}
+              className="w-full bg-white text-[#0A1F44] hover:bg-slate-200 font-bold py-2 shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
-              <span>Send Reset Instructions</span>
+              <span>{isLoading ? "Sending..." : "Send Reset Instructions"}</span>
             </Button>
 
             <Link

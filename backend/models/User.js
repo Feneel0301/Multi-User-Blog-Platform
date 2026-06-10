@@ -25,7 +25,13 @@ const userSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post'
       }
-    ]
+    ],
+    resetPasswordToken: {
+      type: String
+    },
+    resetPasswordExpires: {
+      type: Date
+    }
   }, 
   { 
     timestamps: true // Automatically creates 'createdAt' and 'updatedAt' fields
